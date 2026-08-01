@@ -1,7 +1,7 @@
-name: CI
-
+name: OASEAS ECLSS CI Pipelin
 on:
   push:
+    branches: [ main, ci/mqtt-fixes-deps ]
     branches: [ develop/ngina-orchestrator ]
 name: NGINA CI Pipeline
 
@@ -10,12 +10,22 @@ on:
     branches: [ main, develop/ngina-orchestrator ]
   pull_request:
     branches: [ main ]
-
 jobs:
-  python-checks:
-    name: Python: install & basic checks
-    runs-on: ubuntu-latest
+  build-and-test:
+    runs-base: ubuntu-latest
     steps:
+    - uses: actions/checkout@v4
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    - name: Install Root Dependencies
+      run: npm install
+    - name: Build Backend & Validate TypeScript
+      run: |
+        cd src/backend
+        npm install
+        npm run build --if-present
       - name: Checkout code
         uses: actions/checkout@v4
 
