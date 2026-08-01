@@ -3,6 +3,11 @@ name: CI
 on:
   push:
     branches: [ develop/ngina-orchestrator ]
+name: NGINA CI Pipeline
+
+on:
+  push:
+    branches: [ main, develop/ngina-orchestrator ]
   pull_request:
     branches: [ main ]
 
@@ -13,6 +18,32 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+  build-and-test:
+    name: Build & Test (Node + Python)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install root Node deps (if any)
+        run: |
+          if [ -f package.json ]; then npm ci; fi
+
+      - name: Build backend & validate TypeScript
+        run: |
+          if [ -d src/backend ]; then
+            cd src/backend
+            npm ci
+            npm run build --if-present
+            if [ -f tsconfig.json ]; then npx tsc --noEmit; fi
+            cd -
+          fi
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -49,3 +80,9 @@ jobs:
         run: |
           cd src/backend || exit 0
           if [ -f tsconfig.json ]; then npx tsc --noEmit; fi
+      - name: Python syntax check
+        run: |
+          python -m compileall .
+
+      - name: Workflow summary
+        run: echo "NGINA CI: Node and Python checks completed."
