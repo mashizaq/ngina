@@ -1,0 +1,11 @@
+# Node and Python artifacts
+node_modules/
+venv/
+.env
+dist/
+*.pyc
+__pycache__/
+.DS_Store
+ngina 2.zip
+NGINA.zip
+archive/
