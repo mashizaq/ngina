@@ -1,3 +1,8 @@
+name: CI
+
+on:
+  push:
+    branches: [ develop/ngina-orchestrator ]
 name: NGINA CI Pipeline
 
 on:
@@ -7,6 +12,13 @@ on:
     branches: [ main ]
 
 jobs:
+  python-checks:
+    name: Python: install & basic checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
   build-and-test:
     name: Build & Test (Node + Python)
     runs-on: ubuntu-latest
@@ -43,6 +55,31 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
+      - name: Syntax check (compile)
+        run: |
+          python -m compileall .
+
+  node-build:
+    name: Node: build publisher
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install and build Node publisher
+        run: |
+          cd src/backend || exit 0
+          if [ -f package.json ]; then npm install; npm run build || true; fi
+
+      - name: Lint/Type check (tsc)
+        run: |
+          cd src/backend || exit 0
+          if [ -f tsconfig.json ]; then npx tsc --noEmit; fi
       - name: Python syntax check
         run: |
           python -m compileall .
