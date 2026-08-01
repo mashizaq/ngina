@@ -16,9 +16,9 @@ export class MqttEventPublisher {
         // Non-blocking fire-and-forget publish pattern
         this.client.publish(topic, payload, { qos: 1 }, (error: any) => {
             if (error) {
-                logger.error(`MQTT publish failed on topic ${topic}:`, error);
+                console.error(`MQTT publish failed on topic ${topic}:`, error);
             } else {
-                logger.debug(`MQTT event streamed to ${topic}`);
+                console.debug(`MQTT event streamed to ${topic}`);
             }
         });
     }
