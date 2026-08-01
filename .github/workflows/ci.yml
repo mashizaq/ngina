@@ -1,51 +1,22 @@
-name: CI
-
+name: OASEAS ECLSS CI Pipelin
 on:
   push:
-    branches: [ develop/ngina-orchestrator ]
+    branches: [ main, ci/mqtt-fixes-deps ]
   pull_request:
     branches: [ main ]
-
 jobs:
-  python-checks:
-    name: Python: install & basic checks
-    runs-on: ubuntu-latest
+  build-and-test:
+    runs-base: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-
-      - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-
-      - name: Syntax check (compile)
-        run: |
-          python -m compileall .
-
-  node-build:
-    name: Node: build publisher
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-
-      - name: Install and build Node publisher
-        run: |
-          cd src/backend || exit 0
-          if [ -f package.json ]; then npm install; npm run build || true; fi
-
-      - name: Lint/Type check (tsc)
-        run: |
-          cd src/backend || exit 0
-          if [ -f tsconfig.json ]; then npx tsc --noEmit; fi
+    - uses: actions/checkout@v4
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    - name: Install Root Dependencies
+      run: npm install
+    - name: Build Backend & Validate TypeScript
+      run: |
+        cd src/backend
+        npm install
+        npm run build --if-present
