@@ -4,13 +4,27 @@ services:
     ports:
       - "80:80"
     environment:
+      - DATABASE_URL=${DATABASE_URL}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - MQTT_URL=${MQTT_URL}
       - MQTT_USER=${MQTT_USER}
       - MQTT_PASS=${MQTT_PASS}
+    volumes:
+      - ./data:/app/data
     depends_on:
+      - postgres
       - mosquitto
       - node-publisher
+
+  postgres:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-ngina}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-ngina_pass}
+      - POSTGRES_DB=${POSTGRES_DB:-ngina}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
 
   mosquitto:
     image: eclipse-mosquitto:2.0
@@ -27,3 +41,6 @@ services:
       - MQTT_PASS=${MQTT_PASS}
     depends_on:
       - mosquitto
+
+volumes:
+  pgdata:
