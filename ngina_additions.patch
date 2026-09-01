@@ -1,0 +1,281 @@
+diff --git a/alembic.ini b/alembic.ini
+new file mode 100644
+index 0000000..e69de29
+--- /dev/null
++++ b/alembic.ini
+@@ -0,0 +1,34 @@
++[alembic]
++script_location = alembic
++
++[loggers]
++keys = root,sqlalchemy,alembic
++
++[handlers]
++keys = console
++
++[formatters]
++keys = generic
++
++[logger_root]
++level = WARN
++handlers = console
++
++[handler_console]
++class = StreamHandler
++args = (sys.stderr,)
++level = NOTSET
++formatter = generic
++
++[formatter_generic]
++format = %(levelname)-5.5s [%(name)s] %(message)s
++
+diff --git a/alembic/env.py b/alembic/env.py
+new file mode 100644
+index 0000000..e69de29
+--- /dev/null
++++ b/alembic/env.py
+@@ -0,0 +1,94 @@
++from __future__ import with_statement
++
++import sys
++import os
++from logging.config import fileConfig
++
++from alembic import context
++from sqlalchemy import engine_from_config, pool
++
++# this is the Alembic Config object, which provides
++# access to the values within the .ini file in use.
++config = context.config
++
++# Interpret the config file for Python logging.
++fileConfig(config.config_file_name)
++
++# add your model's MetaData object here
++# for 'autogenerate' support
++sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))\n+from app import db, create_app
++app = create_app()
++
++target_metadata = db.metadata
++
++# other values from the config, defined by the needs of env.py,
++# can be acquired:
++# my_important_option = config.get_main_option("my_important_option")
++# ... etc.
++
++
++def run_migrations_offline():
++    """Run migrations in 'offline' mode.
++
++    This configures the context with just a URL
++    and not an Engine, though an Engine is acceptable
++    here as well.  By skipping the Engine creation
++    we don't even need a DBAPI to be available.
++
++    Calls to context.execute() here emit the given string to the
++    script output.
++    """
++    url = config.get_main_option("sqlalchemy.url")
++    context.configure(url=url, target_metadata=target_metadata, literal_binds=True)
++
++    with context.begin_transaction():
++        context.run_migrations()
++
++
++def run_migrations_online():
++    """Run migrations in 'online' mode.
++
++    In this scenario we need to create an Engine
++    and associate a connection with the context.
++    """
++    configuration = config.get_section(config.config_ini_section)
++    # if DATABASE_URL is set in env, prefer it
++    configuration['sqlalchemy.url'] = os.getenv('DATABASE_URL', configuration.get('sqlalchemy.url'))
++    connectable = engine_from_config(
++        configuration,
++        prefix='sqlalchemy.',
++        poolclass=pool.NullPool,
++    )
++
++    with connectable.connect() as connection:
++        context.configure(connection=connection, target_metadata=target_metadata)
++
++        with context.begin_transaction():
++            context.run_migrations()
++
++
++if context.is_offline_mode():
++    run_migrations_offline()
++else:
++    run_migrations_online()
++
+diff --git a/alembic/versions/0001_initial.py b/alembic/versions/0001_initial.py
+new file mode 100644
+index 0000000..e69de29
+--- /dev/null
++++ b/alembic/versions/0001_initial.py
+@@ -0,0 +1,40 @@
++"""Initial schema
++
++Revision ID: 0001_initial
++Revises: 
++Create Date: 2026-09-01 00:00:00.000000
++"""
++from alembic import op
++import sqlalchemy as sa
++
++# revision identifiers, used by Alembic.
++revision = '0001_initial'
++down_revision = None
++branch_labels = None
++depends_on = None
++
++
++def upgrade():
++    op.create_table(
++        'personas',
++        sa.Column('id', sa.Integer(), primary_key=True),
++        sa.Column('name', sa.String(length=128), nullable=False, unique=True),
++        sa.Column('description', sa.Text(), nullable=True),
++        sa.Column('tone', sa.String(length=64), nullable=True),
++        sa.Column('metadata', sa.Text(), nullable=True),
++    )
++
++
++def downgrade():
++    op.drop_table('personas')
++
+diff --git a/scripts/seed_personas.py b/scripts/seed_personas.py
+new file mode 100644
+index 0000000..e69de29
+--- /dev/null
++++ b/scripts/seed_personas.py
+@@ -0,0 +1,32 @@
++#!/usr/bin/env python
++# Seed script to populate the DB with default personas
++
++from app import create_app, db
++from app.models import Persona
++
++app = create_app()
++
++with app.app_context():
++    db.create_all()
++    existing = Persona.query.filter_by(name='default').first()
++    if not existing:
++        p = Persona(name='default', description='A helpful humanoid AI orchestrator', tone='friendly', metadata={})
++        db.session.add(p)
++        db.session.commit()
++        print('Seeded default persona')
++    else:
++        print('Default persona already exists')
++
+diff --git a/tests/test_api.py b/tests/test_api.py
+new file mode 100644
+index 0000000..e69de29
+--- /dev/null
++++ b/tests/test_api.py
+@@ -0,0 +1,56 @@
++import pytest
++from app import create_app, db
++from app.models import Persona
++
++
++@pytest.fixture
++def app():
++    app = create_app()
++    app.config.update({
++        'TESTING': True,
++        'SQLALCHEMY_DATABASE_URI': 'sqlite:///:memory:'
++    })
++
++    with app.app_context():
++        db.create_all()
++        yield app
++        db.drop_all()
++
++
++@pytest.fixture
++def client(app):
++    return app.test_client()
++
++
++def test_health(client):
++    r = client.get('/health')
++    assert r.status_code == 200
++    assert r.get_json() == {'status': 'ok'}
++
++
++def test_persona_lifecycle(client):
++    # initially default fallback
++    r = client.get('/persona')
++    assert r.status_code == 200
++    data = r.get_json()
++    assert 'default' in data
++
++    # create a new persona
++    payload = {'name': 'alice', 'description': 'Test persona', 'tone': 'formal', 'metadata': {'age': 30}}
++    r = client.post('/persona', json=payload)
++    assert r.status_code == 200
++    j = r.get_json()
++    assert j.get('ok') is True
++    assert j.get('persona', {}).get('name') == 'alice'
++
++    # list personas
++    r = client.get('/persona')
++    data = r.get_json()
++    assert 'alice' in data
++
++
++def test_chat_echo(client):
++    payload = {'message': 'Hello world'}
++    r = client.post('/chat', json=payload)
++    assert r.status_code == 200
++    j = r.get_json()
++    assert 'response' in j
++
+diff --git a/requirements-dev.txt b/requirements-dev.txt
+new file mode 100644
+index 0000000..e69de29
+--- /dev/null
++++ b/requirements-dev.txt
+@@ -0,0 +1,2 @@
++pytest
++pytest-cov
++
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+new file mode 100644
+index 0000000..e69de29
+--- /dev/null
++++ b/.github/workflows/ci.yml
+@@ -0,0 +1,36 @@
++name: CI
++
++on:
++  push:
++    branches: [ main ]
++  pull_request:
++    branches: [ main ]
++
++jobs:
++  test:
++    runs-on: ubuntu-latest
++
++    strategy:
++      matrix:
++        python-version: [3.11]
++
++    steps:
++    - uses: actions/checkout@v4
++    - name: Set up Python
++      uses: actions/setup-python@v4
++      with:
++        python-version: ${{ matrix.python-version }}
++    - name: Install dependencies
++      run: |
++        python -m pip install --upgrade pip
++        pip install -r requirements.txt
++        pip install -r requirements-dev.txt
++    - name: Run tests
++      run: |
++        pytest -q

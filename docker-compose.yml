@@ -1,10 +1,8 @@
-version: '3.8'
-
 services:
   web:
-    build: .
+    image: nginx:latest
     ports:
-      - "5000:5000"
+      - "80:80"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - MQTT_URL=${MQTT_URL}
@@ -19,12 +17,12 @@ services:
     ports:
       - "1883:1883"
     volumes:
-      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/config/mosquitto/config
 
   node-publisher:
     build: ./src/backend
     environment:
-      - MQTT_URL=${MQTT_URL}
+      - MQTT_URL=mqtt://mosquitto:1883
       - MQTT_USER=${MQTT_USER}
       - MQTT_PASS=${MQTT_PASS}
     depends_on:
